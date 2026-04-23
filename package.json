@@ -60,7 +60,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "minimatch": "^9.0.5"
+    "minimatch": "^10.2.5"
   },
   "overrides": {
     "uuid": ">=14.0.0"
