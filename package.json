@@ -57,7 +57,7 @@
     "@opencode-ai/plugin": "^1.4.6",
     "@opencode-ai/sdk": "^1.4.6",
     "@types/node": "^20.19.30",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   },
   "dependencies": {
     "minimatch": "^9.0.5"
