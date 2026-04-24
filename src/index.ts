@@ -41,6 +41,8 @@ interface SessionState {
   seededFromHistory: boolean
   /** Per-turn guard: reset on each new user message, set after injection. */
   rulesInjected: boolean
+  /** Number of matching rules last time system.transform ran — used to detect new matches. */
+  lastMatchCount: number
 }
 
 const sessions = new Map<string, SessionState>()
@@ -48,7 +50,7 @@ const sessions = new Map<string, SessionState>()
 function getSession(id: string): SessionState {
   let state = sessions.get(id)
   if (!state) {
-    state = { contextPaths: new Set(), seededFromHistory: false, rulesInjected: false }
+    state = { contextPaths: new Set(), seededFromHistory: false, rulesInjected: false, lastMatchCount: 0 }
     sessions.set(id, state)
   }
   return state
@@ -144,6 +146,7 @@ async function loadRules(directory: string): Promise<InstructionRule[]> {
 
 export const CopilotInstructionsPlugin: Plugin = async ({
   directory,
+  client,
 }: PluginInput) => {
   const rules = await loadRules(directory)
 
@@ -391,6 +394,27 @@ export const CopilotInstructionsPlugin: Plugin = async ({
 
         // Mark injected for this turn — reset by chat.message on next user turn
         state.rulesInjected = true
+
+        // Toast only when conditional rules grow — always-rules don't count
+        const currentMatchCount = toInject.filter((c) =>
+          rules.some((r) => r.content === c && r.globs !== null)
+        ).length
+        if (currentMatchCount > state.lastMatchCount) {
+          const added = currentMatchCount - state.lastMatchCount
+          state.lastMatchCount = currentMatchCount
+          try {
+            await (client as any).tui.showToast({
+              body: {
+                title: "📖 Copilot Instructions",
+                message: `${currentMatchCount} active (+${added} new)`,
+                variant: "info",
+                duration: 3000,
+              },
+            })
+          } catch {
+            // tui not available in non-interactive mode
+          }
+        }
       }
     },
 
@@ -418,6 +442,7 @@ export const CopilotInstructionsPlugin: Plugin = async ({
       // Reset per-turn guard after compaction so rules re-evaluate
       state.rulesInjected = false
       state.seededFromHistory = false
+      state.lastMatchCount = 0
       log(`Compaction: reset session state for ${sessionID.slice(0, 8)}`)
     },
   }

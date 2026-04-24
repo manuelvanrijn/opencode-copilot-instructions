@@ -13,10 +13,7 @@
 - `tool.execute.before` now also captures `glob`, `grep`, and `bash` tool paths in addition to `read/edit/write`.
 - `experimental.chat.messages.transform` now seeds paths from both tool call args and text parts in message history.
 - After compaction, `seededFromHistory` is reset so history re-seeds from the compacted summary.
-
-### Removed
-- TUI toast notifications removed. They were showing stale or incomplete information due to hook timing — the `list_injected_copilot_instructions` tool is the reliable way to inspect injection status.
-- `client` dependency removed from plugin input since it was only used for toast notifications.
+- TUI toast notifications now appear only when the number of active conditional instruction files increases, avoiding repeated stale notifications.
 
 
 ## v0.1.1 — 2026-04-24
