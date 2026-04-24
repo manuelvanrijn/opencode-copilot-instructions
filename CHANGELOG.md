@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- `experimental.chat.messages.transform` hook that seeds `contextPaths` from tool call history before every LLM call. This means conditional rules can now match in the same turn they were triggered, instead of one turn later.
+
 
 ## v0.1.1 — 2026-04-24
 

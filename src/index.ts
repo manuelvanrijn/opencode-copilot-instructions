@@ -157,6 +157,36 @@ export const CopilotInstructionsPlugin: Plugin = async ({
       }),
     },
 
+    "experimental.chat.messages.transform": async (_input, output) => {
+      // Seed contextPaths from message history — fires before every LLM call.
+      // This ensures conditional rules can match on the first system.transform
+      // call in a turn where tools were used in a previous turn.
+      for (const message of output.messages) {
+        for (const part of message.parts) {
+          const p = part as Record<string, unknown>
+          if (p["type"] !== "tool") continue
+
+          // Extract sessionID from the part to find the right session
+          const sessionID = p["sessionID"]
+          if (typeof sessionID !== "string") continue
+
+          const state = p["state"] as Record<string, unknown> | undefined
+          const input = state?.["input"] as Record<string, unknown> | undefined
+          if (!input) continue
+
+          const filePath = input["filePath"] ?? input["path"]
+          if (typeof filePath !== "string" || !filePath) continue
+
+          const rel = relative(directory, filePath)
+          const session = getSession(sessionID)
+          if (!session.contextPaths.has(rel)) {
+            session.contextPaths.add(rel)
+            log(`Seeded context path from history: ${rel} (session ${sessionID.slice(0, 8)})`)
+          }
+        }
+      }
+    },
+
     "tool.execute.before": async (input, output) => {
       const { tool: toolName, sessionID } = input
       if (!sessionID) return
