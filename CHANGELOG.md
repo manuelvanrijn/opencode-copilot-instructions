@@ -18,6 +18,7 @@
 
 ### Fixed
 - Conditional instruction files with the same content as an always-active file no longer activate unless their `applyTo` glob actually matches.
+- Instruction files with an explicit empty `applyTo:` are now skipped instead of being treated as always-active.
 
 
 ## v0.1.1 — 2026-04-24

@@ -109,14 +109,21 @@ export function parseApplyTo(raw: string): string[] {
   const frontmatter = raw.match(FRONTMATTER_RE)?.[1]
   if (!frontmatter) return []
 
-  const match = frontmatter.match(/^\s*applyTo\s*:\s*(.+)\s*$/m)
+  const match = frontmatter.match(/^\s*applyTo\s*:\s*(.*)\s*$/m)
   if (!match) return []
 
   const value = match[1].trim().replace(/^["']|["']$/g, "")
+  if (!value || value === "[]") return []
+
   return value
     .split(",")
     .map((s) => s.trim().replace(/^["']|["']$/g, ""))
     .filter(Boolean)
+}
+
+function hasApplyTo(raw: string): boolean {
+  const frontmatter = raw.match(FRONTMATTER_RE)?.[1]
+  return Boolean(frontmatter?.match(/^\s*applyTo\s*:/m))
 }
 
 function matchesGlob(filePath: string, glob: string): boolean {
@@ -156,8 +163,14 @@ async function loadRules(directory: string): Promise<InstructionRule[]> {
 
     const filePath = join(instructionsDir, file)
     const raw = await readFile(filePath, "utf8")
+    const explicitApplyTo = hasApplyTo(raw)
     const globs = parseApplyTo(raw)
-    const always = globs.length === 0
+    const always = !explicitApplyTo
+
+    if (explicitApplyTo && globs.length === 0) {
+      log(`Skipped: ${file} (empty applyTo)`)
+      continue
+    }
 
     // Strip YAML frontmatter before injecting content
     const content = raw.replace(FRONTMATTER_RE, "").trim()

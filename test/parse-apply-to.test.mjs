@@ -76,3 +76,21 @@ excludeAgent: "code-review"
 
   assert.deepEqual(parseApplyTo(raw), [])
 })
+
+test("returns empty when applyTo is blank", () => {
+  const raw = `---
+applyTo:
+---
+# Instructions`
+
+  assert.deepEqual(parseApplyTo(raw), [])
+})
+
+test("returns empty when applyTo is an empty array", () => {
+  const raw = `---
+applyTo: []
+---
+# Instructions`
+
+  assert.deepEqual(parseApplyTo(raw), [])
+})

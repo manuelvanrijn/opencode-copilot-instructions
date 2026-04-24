@@ -141,3 +141,19 @@ Use strict types.`,
 
   assert.equal(output.system.length, 0)
 })
+
+test("skips instruction files with an explicit empty applyTo", async () => {
+  const { plugin } = await createPlugin({
+    ".github/instructions/empty.md": `---
+applyTo:
+---
+# Empty
+
+Do not inject globally.`,
+  })
+
+  const output = { system: [] }
+  await plugin["experimental.chat.system.transform"]({ sessionID: "session-6" }, output)
+
+  assert.equal(output.system.length, 0)
+})
