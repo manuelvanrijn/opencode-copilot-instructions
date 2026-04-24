@@ -94,3 +94,50 @@ ${shared}`,
   assert.doesNotMatch(output.system[0], /type="conditional"/)
   assert.equal(toasts.length, 0)
 })
+
+test("normalizes paths from user messages before matching rules", async () => {
+  const { plugin } = await createPlugin({
+    ".github/instructions/typescript.md": `---
+applyTo: "src/**/*.ts"
+---
+# TypeScript
+
+Use strict types.`,
+  })
+
+  await plugin["chat.message"](
+    { sessionID: "session-4" },
+    {
+      message: { role: "user" },
+      parts: [{ type: "text", text: "Please inspect ./src/index.ts." }],
+    }
+  )
+
+  const output = { system: [] }
+  await plugin["experimental.chat.system.transform"]({ sessionID: "session-4" }, output)
+
+  assert.equal(output.system.length, 1)
+  assert.match(output.system[0], /Use strict types\./)
+})
+
+test("ignores paths outside the workspace", async () => {
+  const outsideDirectory = await mkdtemp(join(tmpdir(), "outside-workspace-"))
+  const { plugin } = await createPlugin({
+    ".github/instructions/typescript.md": `---
+applyTo: "src/**/*.ts"
+---
+# TypeScript
+
+Use strict types.`,
+  })
+
+  await plugin["tool.execute.before"](
+    { tool: "read", sessionID: "session-5" },
+    { args: { filePath: join(outsideDirectory, "src/index.ts") } }
+  )
+
+  const output = { system: [] }
+  await plugin["experimental.chat.system.transform"]({ sessionID: "session-5" }, output)
+
+  assert.equal(output.system.length, 0)
+})

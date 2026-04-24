@@ -14,7 +14,7 @@
 import type { Plugin, PluginInput } from "@opencode-ai/plugin"
 import { tool } from "@opencode-ai/plugin"
 import { readdir, readFile } from "node:fs/promises"
-import { join, relative } from "node:path"
+import { isAbsolute, join, relative } from "node:path"
 import { minimatch } from "minimatch"
 
 const LOG_PREFIX = "[copilot-instructions]"
@@ -70,6 +70,35 @@ function extractPathsFromText(text: string): string[] {
     found.push(p)
   }
   return found
+}
+
+function normalizePathSeparators(filePath: string): string {
+  return filePath.replace(/\\/g, "/")
+}
+
+function normalizeContextPath(directory: string, filePath: string): string | null {
+  const normalizedPath = normalizePathSeparators(filePath.trim())
+  if (!normalizedPath) return null
+
+  const absolutePath = isAbsolute(normalizedPath) ? normalizedPath : join(directory, normalizedPath)
+  const rel = normalizePathSeparators(relative(directory, absolutePath))
+
+  if (!rel || rel === "." || rel === ".." || rel.startsWith("../") || isAbsolute(rel)) return null
+  return rel
+}
+
+function addContextPath(
+  directory: string,
+  state: SessionState,
+  sessionID: string,
+  filePath: string,
+  source: string
+): void {
+  const rel = normalizeContextPath(directory, filePath)
+  if (!rel || state.contextPaths.has(rel)) return
+
+  state.contextPaths.add(rel)
+  log(`${source}: ${rel} (session ${sessionID.slice(0, 8)})`)
 }
 
 /**
@@ -215,16 +244,7 @@ export const CopilotInstructionsPlugin: Plugin = async ({
         if (typeof text !== "string") continue
 
         for (const found of extractPathsFromText(text)) {
-          const rel = relative(directory, found.startsWith("/") ? found : join(directory, found))
-          if (!state.contextPaths.has(rel) && !rel.startsWith("..")) {
-            state.contextPaths.add(rel)
-            log(`Path from user message: ${rel} (session ${sessionID.slice(0, 8)})`)
-          }
-          // Also try the path as-is (relative paths typed by user)
-          if (!state.contextPaths.has(found)) {
-            state.contextPaths.add(found)
-            log(`Path from user message (raw): ${found} (session ${sessionID.slice(0, 8)})`)
-          }
+          addContextPath(directory, state, sessionID, found, "Path from user message")
         }
       }
     },
@@ -252,21 +272,14 @@ export const CopilotInstructionsPlugin: Plugin = async ({
             const filePath = toolInput["filePath"] ?? toolInput["path"]
             if (typeof filePath !== "string" || !filePath) continue
 
-            const rel = relative(directory, filePath)
-            if (!state.contextPaths.has(rel)) {
-              state.contextPaths.add(rel)
-              log(`Seeded from history (tool): ${rel} (session ${sessionID.slice(0, 8)})`)
-            }
+            addContextPath(directory, state, sessionID, filePath, "Seeded from history (tool)")
           } else if (p["type"] === "text") {
             // Extract from text parts (user messages)
             const text = p["text"]
             if (typeof text !== "string") continue
 
             for (const found of extractPathsFromText(text)) {
-              if (!state.contextPaths.has(found)) {
-                state.contextPaths.add(found)
-                log(`Seeded from history (text): ${found} (session ${sessionID.slice(0, 8)})`)
-              }
+              addContextPath(directory, state, sessionID, found, "Seeded from history (text)")
             }
           }
         }
@@ -293,13 +306,7 @@ export const CopilotInstructionsPlugin: Plugin = async ({
       const args = (output as { args?: Record<string, unknown> }).args
       const state = getSession(sessionID)
 
-      const addPath = (p: string) => {
-        const rel = relative(directory, p.startsWith("/") ? p : join(directory, p))
-        if (!rel.startsWith("..") && !state.contextPaths.has(rel)) {
-          state.contextPaths.add(rel)
-          log(`New context path: ${rel} (session ${sessionID.slice(0, 8)})`)
-        }
-      }
+      const addPath = (p: string) => addContextPath(directory, state, sessionID, p, "New context path")
 
       if (toolName === "bash") {
         // Extract workdir arg
@@ -339,13 +346,8 @@ export const CopilotInstructionsPlugin: Plugin = async ({
       if (typeof text !== "string" || !text) return
 
       const state = getSession(sessionID)
-      const addPath = (p: string) => {
-        const rel = relative(directory, p.startsWith("/") ? p : join(directory, p))
-        if (!rel.startsWith("..") && rel !== "" && rel !== "." && !state.contextPaths.has(rel)) {
-          state.contextPaths.add(rel)
-          log(`New context path from bash output: ${rel} (session ${sessionID.slice(0, 8)})`)
-        }
-      }
+      const addPath = (p: string) =>
+        addContextPath(directory, state, sessionID, p, "New context path from bash output")
 
       for (const found of extractPathsFromText(text)) addPath(found)
     },
