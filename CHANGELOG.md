@@ -17,10 +17,12 @@
 - TUI toast notifications now appear only when the number of active conditional instruction files increases, avoiding repeated stale notifications.
 - Context paths are now normalized through one shared path resolver, rejected when outside the workspace, and stored with POSIX separators for consistent glob matching.
 - `.github/instructions/*.md` files are now loaded in sorted filename order for deterministic prompt output.
+- Instruction parsing, path handling, and rule rendering are now split into focused modules with direct unit coverage.
 
 ### Fixed
 - Conditional instruction files with the same content as an always-active file no longer activate unless their `applyTo` glob actually matches.
 - Instruction files with an explicit empty `applyTo:` are now skipped instead of being treated as always-active.
+- Path extraction no longer treats the leading path-like segment of an email address as a context path.
 
 
 ## v0.1.1 — 2026-04-24
