@@ -199,11 +199,21 @@ export const CopilotInstructionsPlugin: Plugin = async ({
       }
 
       if (toInject.length > 0) {
-        output.system.push(...toInject)
+        const injectedRules = rules.filter((r) => toInject.includes(r.content))
+        const names = injectedRules.map((r) => r.path.replace(".instructions.md", ""))
 
-        const names = rules
-          .filter((r) => toInject.includes(r.content))
-          .map((r) => r.path.replace(".instructions.md", ""))
+        const alwaysContent = injectedRules
+          .filter((r) => r.globs === null)
+          .map((r) => r.content)
+        const conditionalContent = injectedRules
+          .filter((r) => r.globs !== null)
+          .map((r) => r.content)
+
+        const wrap = (contents: string[], label: string) =>
+          `<project_instructions type="${label}">\nThe following project-specific instructions MUST be followed. Apply them immediately and for all subsequent actions.\n\n${contents.join("\n\n---\n\n")}\n</project_instructions>`
+
+        if (alwaysContent.length > 0) output.system.push(wrap(alwaysContent, "always"))
+        if (conditionalContent.length > 0) output.system.push(wrap(conditionalContent, "conditional"))
 
         try {
           await (client as any).tui.showToast({
