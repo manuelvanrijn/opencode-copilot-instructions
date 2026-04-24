@@ -24,6 +24,10 @@ const log = (...args: unknown[]): void => {
 }
 const FRONTMATTER_RE = /^\uFEFF?---\s*\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/
 
+// Matches file-like paths in text: optional ./ ../ or /, then word/dot/slash chars
+// with at least one slash, excluding URLs.
+const PATH_REGEX = /(?:^|[\s"'`(])((\.{0,2}\/)?[\w./-]+\/[\w./-]+(?:\.\w+)?)/gm
+
 interface InstructionRule {
   /** Glob patterns from `applyTo:` frontmatter. null = always inject. */
   globs: string[] | null
@@ -33,7 +37,10 @@ interface InstructionRule {
 
 interface SessionState {
   contextPaths: Set<string>
-  injectedRules: Set<string>
+  /** Paths seen this session — accumulates forever, never cleared. */
+  seededFromHistory: boolean
+  /** Per-turn guard: reset on each new user message, set after injection. */
+  rulesInjected: boolean
 }
 
 const sessions = new Map<string, SessionState>()
@@ -41,10 +48,26 @@ const sessions = new Map<string, SessionState>()
 function getSession(id: string): SessionState {
   let state = sessions.get(id)
   if (!state) {
-    state = { contextPaths: new Set(), injectedRules: new Set() }
+    state = { contextPaths: new Set(), seededFromHistory: false, rulesInjected: false }
     sessions.set(id, state)
   }
   return state
+}
+
+/**
+ * Extract file-like paths from a text string.
+ * Excludes URLs and bare words without slashes.
+ */
+function extractPathsFromText(text: string): string[] {
+  const found: string[] = []
+  let match: RegExpExecArray | null
+  PATH_REGEX.lastIndex = 0
+  while ((match = PATH_REGEX.exec(text)) !== null) {
+    const p = match[1].replace(/[.,;:!?]$/, "") // strip trailing punctuation
+    if (p.includes("://") || p.includes("@")) continue
+    found.push(p)
+  }
+  return found
 }
 
 /**
@@ -118,32 +141,30 @@ export const CopilotInstructionsPlugin: Plugin = async ({
         args: {},
         async execute(_args, ctx) {
           const state = sessions.get(ctx.sessionID)
-          const injected = state ? Array.from(state.injectedRules) : []
           const contextPaths = state ? Array.from(state.contextPaths) : []
 
           const alwaysRules = rules.filter((r) => r.globs === null)
           const conditionalRules = rules.filter((r) => r.globs !== null)
-          const injectedConditional = conditionalRules.filter((r) =>
-            injected.includes(r.path)
+
+          const injectedConditional = conditionalRules.filter(
+            (r) => contextPaths.some((p) => r.globs!.some((g) => matchesGlob(p, g)))
           )
           const pendingConditional = conditionalRules.filter(
-            (r) => !injected.includes(r.path)
+            (r) => !contextPaths.some((p) => r.globs!.some((g) => matchesGlob(p, g)))
           )
 
           const lines: string[] = [
             `## Copilot Instructions Status`,
             ``,
             `### Always-active (no applyTo) — ${alwaysRules.length} files`,
-            ...alwaysRules.map(
-              (r) => `- ${injected.includes(r.path) ? "✓" : "○"} ${r.path}`
-            ),
+            ...alwaysRules.map((r) => `- ✓ ${r.path}`),
             ``,
             `### Conditional (applyTo) — ${conditionalRules.length} files`,
-            `Injected (${injectedConditional.length}):`,
+            `Active (${injectedConditional.length}):`,
             ...injectedConditional.map(
               (r) => `- ✓ ${r.path} [${r.globs!.join(", ")}]`
             ),
-            `Pending (${pendingConditional.length}):`,
+            `Pending — no matching files yet (${pendingConditional.length}):`,
             ...pendingConditional.map(
               (r) => `- ○ ${r.path} [${r.globs!.join(", ")}]`
             ),
@@ -157,31 +178,90 @@ export const CopilotInstructionsPlugin: Plugin = async ({
       }),
     },
 
+    // Fires on each new user message — captures prompt text paths and resets
+    // the per-turn injection guard so system.transform re-evaluates rules.
+    "chat.message": async (input, output) => {
+      const { sessionID } = input
+      if (!sessionID) return
+      if (output.message.role !== "user") return
+
+      const state = getSession(sessionID)
+
+      // Reset per-turn guard so system.transform injects again this turn
+      state.rulesInjected = false
+
+      // Extract file paths mentioned in the user message text
+      for (const part of output.parts) {
+        const p = part as Record<string, unknown>
+        if (p["type"] !== "text") continue
+        const text = p["text"]
+        if (typeof text !== "string") continue
+
+        for (const found of extractPathsFromText(text)) {
+          const rel = relative(directory, found.startsWith("/") ? found : join(directory, found))
+          if (!state.contextPaths.has(rel) && !rel.startsWith("..")) {
+            state.contextPaths.add(rel)
+            log(`Path from user message: ${rel} (session ${sessionID.slice(0, 8)})`)
+          }
+          // Also try the path as-is (relative paths typed by user)
+          if (!state.contextPaths.has(found)) {
+            state.contextPaths.add(found)
+            log(`Path from user message (raw): ${found} (session ${sessionID.slice(0, 8)})`)
+          }
+        }
+      }
+    },
+
+    // Seeds contextPaths from full message history on session start.
+    // Extracts paths from both tool call args and message text.
     "experimental.chat.messages.transform": async (_input, output) => {
-      // Seed contextPaths from message history — fires before every LLM call.
-      // This ensures conditional rules can match on the first system.transform
-      // call in a turn where tools were used in a previous turn.
       for (const message of output.messages) {
         for (const part of message.parts) {
           const p = part as Record<string, unknown>
-          if (p["type"] !== "tool") continue
 
-          // Extract sessionID from the part to find the right session
+          // Extract sessionID from part (present on ToolPart, TextPart, etc.)
           const sessionID = p["sessionID"]
           if (typeof sessionID !== "string") continue
 
-          const state = p["state"] as Record<string, unknown> | undefined
-          const input = state?.["input"] as Record<string, unknown> | undefined
-          if (!input) continue
+          const state = getSession(sessionID)
+          if (state.seededFromHistory) continue
 
-          const filePath = input["filePath"] ?? input["path"]
-          if (typeof filePath !== "string" || !filePath) continue
+          if (p["type"] === "tool") {
+            // Extract from tool call input args
+            const toolState = p["state"] as Record<string, unknown> | undefined
+            const toolInput = toolState?.["input"] as Record<string, unknown> | undefined
+            if (!toolInput) continue
 
-          const rel = relative(directory, filePath)
-          const session = getSession(sessionID)
-          if (!session.contextPaths.has(rel)) {
-            session.contextPaths.add(rel)
-            log(`Seeded context path from history: ${rel} (session ${sessionID.slice(0, 8)})`)
+            const filePath = toolInput["filePath"] ?? toolInput["path"]
+            if (typeof filePath !== "string" || !filePath) continue
+
+            const rel = relative(directory, filePath)
+            if (!state.contextPaths.has(rel)) {
+              state.contextPaths.add(rel)
+              log(`Seeded from history (tool): ${rel} (session ${sessionID.slice(0, 8)})`)
+            }
+          } else if (p["type"] === "text") {
+            // Extract from text parts (user messages)
+            const text = p["text"]
+            if (typeof text !== "string") continue
+
+            for (const found of extractPathsFromText(text)) {
+              if (!state.contextPaths.has(found)) {
+                state.contextPaths.add(found)
+                log(`Seeded from history (text): ${found} (session ${sessionID.slice(0, 8)})`)
+              }
+            }
+          }
+        }
+      }
+
+      // Mark all seen sessions as seeded
+      for (const message of output.messages) {
+        for (const part of message.parts) {
+          const p = part as Record<string, unknown>
+          const sessionID = p["sessionID"]
+          if (typeof sessionID === "string") {
+            getSession(sessionID).seededFromHistory = true
           }
         }
       }
@@ -191,16 +271,18 @@ export const CopilotInstructionsPlugin: Plugin = async ({
       const { tool: toolName, sessionID } = input
       if (!sessionID) return
 
-      if (!["read", "edit", "write"].includes(toolName)) return
+      if (!["read", "edit", "write", "glob", "grep"].includes(toolName)) return
 
       const args = (output as { args?: Record<string, unknown> }).args
-      const filePath = args?.filePath
+      const filePath = (args?.filePath ?? args?.path) as string | undefined
       if (typeof filePath !== "string" || !filePath) return
 
       const rel = relative(directory, filePath)
-      const isNew = !getSession(sessionID).contextPaths.has(rel)
-      getSession(sessionID).contextPaths.add(rel)
-      if (isNew) log(`New context path: ${rel} (session ${sessionID.slice(0, 8)})`)
+      const state = getSession(sessionID)
+      if (!state.contextPaths.has(rel)) {
+        state.contextPaths.add(rel)
+        log(`New context path: ${rel} (session ${sessionID.slice(0, 8)})`)
+      }
     },
 
     "experimental.chat.system.transform": async (input, output) => {
@@ -208,22 +290,23 @@ export const CopilotInstructionsPlugin: Plugin = async ({
       if (!sessionID) return
 
       const state = getSession(sessionID)
+
+      // Per-turn guard: skip if already injected this turn
+      if (state.rulesInjected) return
+
       const toInject: string[] = []
 
       for (const rule of rules) {
-        if (state.injectedRules.has(rule.path)) continue
-
         const matches =
           rule.globs === null
             ? true
             : state.contextPaths.size > 0 &&
-            Array.from(state.contextPaths).some((p) =>
-              rule.globs!.some((g) => matchesGlob(p, g))
-            )
+              Array.from(state.contextPaths).some((p) =>
+                rule.globs!.some((g) => matchesGlob(p, g))
+              )
 
         if (matches) {
           toInject.push(rule.content)
-          state.injectedRules.add(rule.path)
           log(`Injected: ${rule.path} into session ${sessionID.slice(0, 8)}`)
         }
       }
@@ -244,6 +327,9 @@ export const CopilotInstructionsPlugin: Plugin = async ({
 
         if (alwaysContent.length > 0) output.system.push(wrap(alwaysContent, "always"))
         if (conditionalContent.length > 0) output.system.push(wrap(conditionalContent, "conditional"))
+
+        // Mark injected for this turn — reset by chat.message on next user turn
+        state.rulesInjected = true
 
         try {
           await (client as any).tui.showToast({
@@ -281,9 +367,10 @@ export const CopilotInstructionsPlugin: Plugin = async ({
         ].join("\n")
       )
 
-      // Reset after compaction so instructions are re-evaluated
-      state.injectedRules.clear()
-      log(`Compaction: cleared injected rules for session ${sessionID.slice(0, 8)}`)
+      // Reset per-turn guard after compaction so rules re-evaluate
+      state.rulesInjected = false
+      state.seededFromHistory = false
+      log(`Compaction: reset session state for ${sessionID.slice(0, 8)}`)
     },
   }
 }
