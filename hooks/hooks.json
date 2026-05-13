@@ -1,0 +1,24 @@
+{
+  "hooks": [
+    {
+      "name": "SessionStart",
+      "command": "hooks/session-start.sh"
+    },
+    {
+      "name": "UserPromptSubmit",
+      "command": "hooks/user-prompt-submit.sh"
+    },
+    {
+      "name": "PreToolUse",
+      "command": "hooks/pre-tool-use.sh"
+    },
+    {
+      "name": "PostToolUse",
+      "command": "hooks/post-tool-use.sh"
+    },
+    {
+      "name": "PreCompact",
+      "command": "hooks/pre-compact.sh"
+    }
+  ]
+}

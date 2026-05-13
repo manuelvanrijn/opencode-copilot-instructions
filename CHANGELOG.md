@@ -3,6 +3,11 @@
 ## Unreleased
 
 ### Added
+- Native **Factory Droid** support via `.factory-plugin/` hook adapters. The same instruction sources, `applyTo:` parsing, glob matching, and XML wrapping now work in Droid without changing OpenCode behavior.
+  - Hooks: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PreCompact`.
+  - Persistent JSON state keyed by project + session, with atomic writes and transcript-rebuild fallback stub.
+  - Conditional rules activate from prompt text, tool inputs, and tool outputs (`Glob`, `Grep`, `Execute`) just like in OpenCode.
+  - Compact/resume continuity preserved through `PreCompact` summaries and `SessionStart(source=compact)` recovery.
 - `.github/copilot-instructions.md` is now always loaded if present — this is the repository-level instructions file used by GitHub Copilot.
 - `tool.execute.after` hook that scans bash output for file paths (e.g. `find` results), enabling rules to match on paths discovered via shell commands.
 - `tool.execute.after` now also scans `glob` and `grep` output for file paths, enabling rules to match on files discovered by search tools.

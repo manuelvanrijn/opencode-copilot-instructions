@@ -1,0 +1,9 @@
+import { stdin } from "node:process"
+
+export async function readStdin(): Promise<string> {
+  const chunks: Buffer[] = []
+  for await (const chunk of stdin) {
+    chunks.push(chunk)
+  }
+  return Buffer.concat(chunks).toString("utf8")
+}

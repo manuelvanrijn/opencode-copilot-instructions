@@ -14,6 +14,8 @@ This means you can keep your existing `.github/copilot-instructions.md` and `.gi
 
 ## Installation
 
+### OpenCode
+
 ```bash
 opencode plugin @manuelvanrijn/opencode-copilot-instructions@0.1.2 --global
 ```
@@ -26,6 +28,20 @@ Or add it to your `opencode.json`:
   "plugin": ["@manuelvanrijn/opencode-copilot-instructions@0.1.2"]
 }
 ```
+
+### Factory Droid
+
+Install as a **project plugin** from the repo path (recommended while validating):
+
+```bash
+droid plugin install /path/to/this/repo
+```
+
+Droid hooks will then activate automatically:
+- `SessionStart` — restores continuity after compaction
+- `UserPromptSubmit` — injects matching instructions into context
+- `PreToolUse` / `PostToolUse` — captures paths from tool inputs/outputs
+- `PreCompact` — persists state for resume
 
 ## Instruction file format
 
