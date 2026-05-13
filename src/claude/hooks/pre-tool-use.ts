@@ -6,13 +6,29 @@ import {
   type DroidPersistedState,
 } from "../state.js"
 import { readStdin } from "./_stdin.js"
+import { appendFileSync } from "node:fs"
 
 async function main() {
-  const input = JSON.parse(await readStdin())
+  const rawInput = await readStdin()
+  const input = JSON.parse(rawInput)
+  
+  // DEBUG: log what we received
+  appendFileSync("/tmp/copilot-instructions-debug.log", JSON.stringify({
+    hook: "pre-tool-use",
+    timestamp: new Date().toISOString(),
+    input: input
+  }, null, 2) + "\n---\n")
+  
   const sessionID = input.session_id as string
   const projectDir = input.project_dir as string
   const toolName = (input.tool?.name as string)?.toLowerCase() ?? ""
   const toolInput = (input.tool?.input as Record<string, unknown>) ?? {}
+
+  if (!projectDir) {
+    console.error("ERROR: project_dir is missing from hook input")
+    console.error("Input keys:", Object.keys(input))
+    process.exit(1)
+  }
 
   const cacheDir = getCacheDir(projectDir)
   const persisted = await loadState(cacheDir, sessionID)
