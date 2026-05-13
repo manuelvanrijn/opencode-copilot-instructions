@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./hooks/session-start.sh"
+            "command": "node \"${DROID_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/dist/src/claude/hooks/session-start.js\""
           }
         ]
       }
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./hooks/user-prompt-submit.sh"
+            "command": "node \"${DROID_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/dist/src/claude/hooks/user-prompt-submit.js\""
           }
         ]
       }
@@ -25,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./hooks/pre-tool-use.sh"
+            "command": "node \"${DROID_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/dist/src/claude/hooks/pre-tool-use.js\""
           }
         ]
       }
@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./hooks/post-tool-use.sh"
+            "command": "node \"${DROID_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/dist/src/claude/hooks/post-tool-use.js\""
           }
         ]
       }
@@ -45,7 +45,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "./hooks/pre-compact.sh"
+            "command": "node \"${DROID_PLUGIN_ROOT:-$CLAUDE_PLUGIN_ROOT}/dist/src/claude/hooks/pre-compact.js\""
           }
         ]
       }

@@ -7,6 +7,10 @@ import {
 } from "../state.js"
 import { readStdin } from "./_stdin.js"
 
+function isStatusQuery(prompt: string): boolean {
+  return /^.*(?=.*(?:instruction|copilot)).*(?:status|loaded|active|inject|list|show|which|what|current).*$/i.test(prompt)
+}
+
 async function main() {
   const input = JSON.parse(await readStdin())
   const sessionID = input.session_id as string
@@ -47,7 +51,22 @@ async function main() {
 
   await saveState(cacheDir, sessionID, newPersisted)
 
-  if (instructions.length === 0) {
+  const additionalContext: Array<{ type: string; text: string }> = []
+
+  if (isStatusQuery(prompt)) {
+    additionalContext.push({
+      type: "text",
+      text: engine.renderStatus(state),
+    })
+  }
+
+  if (instructions.length > 0) {
+    for (const text of instructions) {
+      additionalContext.push({ type: "text", text })
+    }
+  }
+
+  if (additionalContext.length === 0) {
     console.log(JSON.stringify({}))
     return
   }
@@ -55,7 +74,7 @@ async function main() {
   console.log(
     JSON.stringify({
       hookSpecificOutput: {
-        additionalContext: instructions.map((text) => ({ type: "text", text })),
+        additionalContext,
       },
     })
   )
