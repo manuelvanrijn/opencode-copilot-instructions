@@ -1,52 +1,54 @@
 {
-  "SessionStart": [
-    {
-      "hooks": [
-        {
-          "type": "command",
-          "command": "${DROID_PLUGIN_ROOT}/hooks/session-start.sh"
-        }
-      ]
-    }
-  ],
-  "UserPromptSubmit": [
-    {
-      "hooks": [
-        {
-          "type": "command",
-          "command": "${DROID_PLUGIN_ROOT}/hooks/user-prompt-submit.sh"
-        }
-      ]
-    }
-  ],
-  "PreToolUse": [
-    {
-      "hooks": [
-        {
-          "type": "command",
-          "command": "${DROID_PLUGIN_ROOT}/hooks/pre-tool-use.sh"
-        }
-      ]
-    }
-  ],
-  "PostToolUse": [
-    {
-      "hooks": [
-        {
-          "type": "command",
-          "command": "${DROID_PLUGIN_ROOT}/hooks/post-tool-use.sh"
-        }
-      ]
-    }
-  ],
-  "PreCompact": [
-    {
-      "hooks": [
-        {
-          "type": "command",
-          "command": "${DROID_PLUGIN_ROOT}/hooks/pre-compact.sh"
-        }
-      ]
-    }
-  ]
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/session-start.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/user-prompt-submit.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/pre-tool-use.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/post-tool-use.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./hooks/pre-compact.sh"
+          }
+        ]
+      }
+    ]
+  }
 }

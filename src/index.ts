@@ -1,7 +1,7 @@
 /**
  * @manuelvanrijn/copilot-instructions-plugin
  *
- * OpenCode / Factory Droid plugin that reads .github/instructions/*.md files
+ * Claude Code / Factory Droid / OpenCode plugin that reads .github/instructions/*.md files
  * with `applyTo:` frontmatter and injects matching instructions into the
  * system prompt when the agent reads, edits, or writes files matching those
  * globs.

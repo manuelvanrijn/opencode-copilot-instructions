@@ -60,8 +60,15 @@ rm "$TMP"
 # Update version references in README.md
 sed -i '' "s/@manuelvanrijn\/copilot-instructions-plugin@${CURRENT}/@manuelvanrijn\/copilot-instructions-plugin@${NEW}/g" README.md
 
+# Sync version to Claude plugin manifest
+if [ -f ".claude-plugin/plugin.json" ]; then
+  tmp=$(mktemp)
+  jq --arg version "$NEW" '.version = $version' ".claude-plugin/plugin.json" > "$tmp"
+  mv "$tmp" ".claude-plugin/plugin.json"
+fi
+
 # Commit, tag, push
-git add package.json "$CHANGELOG" README.md
+git add package.json "$CHANGELOG" README.md .claude-plugin/plugin.json
 git commit -m "chore: release v${NEW}"
 git tag "v${NEW}"
 git push origin main

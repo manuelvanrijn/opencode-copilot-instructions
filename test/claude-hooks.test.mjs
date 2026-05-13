@@ -24,7 +24,7 @@ function runHook(scriptPath, stdinObj) {
 }
 
 async function createProject(files) {
-  const directory = await mkdtemp(join(tmpdir(), "droid-hooks-"))
+  const directory = await mkdtemp(join(tmpdir(), "claude-hooks-"))
   for (const [path, content] of Object.entries(files)) {
     const fullPath = join(directory, path)
     await mkdir(join(fullPath, ".."), { recursive: true })
@@ -33,7 +33,7 @@ async function createProject(files) {
   return directory
 }
 
-const HOOKS_DIR = join(process.cwd(), "dist/src/droid/hooks")
+const HOOKS_DIR = join(process.cwd(), "dist/src/claude/hooks")
 
 test("session-start emits compact summary when source=compact", async () => {
   const directory = await createProject({

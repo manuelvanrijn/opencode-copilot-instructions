@@ -1,6 +1,6 @@
 {
   "name": "copilot-instructions-plugin",
-  "description": "Loads .github/instructions/ files into Droid context with applyTo: support — like GitHub Copilot custom instructions",
+  "description": "Loads .github/instructions/ files with applyTo: support — like GitHub Copilot custom instructions",
   "version": "0.1.2",
   "author": {
     "name": "Manuel van Rijn",

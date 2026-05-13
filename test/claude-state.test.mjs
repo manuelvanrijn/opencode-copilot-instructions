@@ -11,7 +11,7 @@ import {
   saveState,
   deleteState,
   createEmptyState,
-} from "../dist/src/droid/state.js"
+} from "../dist/src/claude/state.js"
 
 test("getCacheDir returns a stable path under home cache", () => {
   const dir1 = getCacheDir("/project/a")
@@ -39,7 +39,7 @@ test("createEmptyState returns a valid empty state", () => {
 })
 
 test("saveState and loadState round-trip", async () => {
-  const cacheDir = await mkdtemp(join(tmpdir(), "droid-state-"))
+  const cacheDir = await mkdtemp(join(tmpdir(), "claude-state-"))
   const state = {
     contextPaths: ["src/index.ts"],
     seededFromHistory: true,
@@ -62,14 +62,14 @@ test("saveState and loadState round-trip", async () => {
 })
 
 test("loadState returns empty state when file is missing", async () => {
-  const cacheDir = await mkdtemp(join(tmpdir(), "droid-state-"))
+  const cacheDir = await mkdtemp(join(tmpdir(), "claude-state-"))
   const loaded = await loadState(cacheDir, "nonexistent")
   assert.deepEqual(loaded, createEmptyState())
   await rm(cacheDir, { recursive: true })
 })
 
 test("loadState returns empty state when version mismatches", async () => {
-  const cacheDir = await mkdtemp(join(tmpdir(), "droid-state-"))
+  const cacheDir = await mkdtemp(join(tmpdir(), "claude-state-"))
   const badState = { version: 99, contextPaths: ["a.ts"] }
   await saveState(cacheDir, "session-2", badState)
   const loaded = await loadState(cacheDir, "session-2")

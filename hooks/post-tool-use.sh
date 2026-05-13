@@ -1,2 +1,3 @@
 #!/bin/sh
-exec node "${DROID_PLUGIN_ROOT}/dist/src/droid/hooks/post-tool-use.js"
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+exec node "${SCRIPT_DIR}/../dist/src/claude/hooks/post-tool-use.js"

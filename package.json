@@ -1,7 +1,7 @@
 {
   "name": "@manuelvanrijn/copilot-instructions-plugin",
   "version": "0.1.2",
-  "description": "OpenCode / Factory Droid plugin that loads .github/instructions/ files with applyTo: frontmatter into the system prompt — like GitHub Copilot instructions",
+  "description": "Claude Code plugin that loads .github/instructions files with applyTo support, with Factory Droid and OpenCode support included — like GitHub Copilot custom instructions",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "type": "module",
@@ -16,11 +16,12 @@
     "prepublishOnly": "npm run clean && npm run build"
   },
   "keywords": [
-    "opencode",
-    "factory-droid",
-    "droid",
     "claude",
     "claude-code",
+    "copilot-instructions",
+    "droid",
+    "factory-droid",
+    "opencode",
     "plugin",
     "marketplace",
     "copilot",
@@ -46,7 +47,7 @@
     "src/",
     "!src/**/*.test.ts",
     "!src/**/*.spec.ts",
-    ".factory-plugin",
+    ".claude-plugin",
     "hooks",
     "README.md",
     "LICENSE"

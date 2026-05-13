@@ -3,11 +3,12 @@
 ## Unreleased
 
 ### Added
-- Native **Factory Droid** support via `.factory-plugin/` hook adapters. The same instruction sources, `applyTo:` parsing, glob matching, and XML wrapping now work in Droid without changing OpenCode behavior.
+- Native **Claude Code** plugin support with `.claude-plugin/` manifest and `hooks/hooks.json` lifecycle hooks. The same instruction sources, `applyTo:` parsing, glob matching, and XML wrapping work across Claude, Droid, and OpenCode.
   - Hooks: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PreCompact`.
   - Persistent JSON state keyed by project + session, with atomic writes and transcript-rebuild fallback stub.
   - Conditional rules activate from prompt text, tool inputs, and tool outputs (`Glob`, `Grep`, `Execute`) just like in OpenCode.
   - Compact/resume continuity preserved through `PreCompact` summaries and `SessionStart(source=compact)` recovery.
+  - Factory Droid reads the plugin natively via its Claude Code compatibility layer.
 - `.github/copilot-instructions.md` is now always loaded if present — this is the repository-level instructions file used by GitHub Copilot.
 - `tool.execute.after` hook that scans bash output for file paths (e.g. `find` results), enabling rules to match on paths discovered via shell commands.
 - `tool.execute.after` now also scans `glob` and `grep` output for file paths, enabling rules to match on files discovered by search tools.
@@ -15,7 +16,7 @@
 - Directory paths without trailing slash (e.g. `apps/joblab`) now match `apps/joblab/**` globs by trying with a trailing slash appended.
 
 ### Changed
-- Package and repository renamed from `@manuelvanrijn/opencode-copilot-instructions` to `@manuelvanrijn/copilot-instructions-plugin` to reflect dual-platform (OpenCode + Factory Droid) support. The old npm package is deprecated; migrate to the new name.
+- Package and repository renamed from `@manuelvanrijn/opencode-copilot-instructions` to `@manuelvanrijn/copilot-instructions-plugin` to reflect multi-platform (Claude Code + Factory Droid + OpenCode) support. The old npm package is deprecated; migrate to the new name.
 - `chat.message` hook now also extracts file paths from user message text via regex, enabling same-turn injection when a file path is mentioned without the agent calling a tool.
 - `tool.execute.before` now also captures `glob`, `grep`, and `bash` tool paths in addition to `read/edit/write`.
 - `experimental.chat.messages.transform` now seeds paths from both tool call args and text parts in message history.
