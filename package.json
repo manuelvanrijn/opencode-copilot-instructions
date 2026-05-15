@@ -12,7 +12,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
-    "test": "npm run build && node --test test/**/*.test.mjs",
+    "test": "npm run build && node --test test/*.test.mjs",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "keywords": [
