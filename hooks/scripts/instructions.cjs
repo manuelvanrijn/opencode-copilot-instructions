@@ -294,6 +294,45 @@ function cmdPreCompact(opts) {
   )
 }
 
+function cmdStatus(opts) {
+  const { projectDir, stateDir } = opts
+  const rules = loadRules(projectDir)
+
+  const always = rules.filter((r) => r.globs === null)
+  const conditional = rules.filter((r) => r.globs !== null)
+
+  const lines = [
+    "## Copilot Instructions Status",
+    "",
+    `### Always-active (no applyTo) — ${always.length} files`,
+    ...always.map((r) => `- ${r.path}`),
+    "",
+    `### Conditional (applyTo) — ${conditional.length} files`,
+    ...conditional.map((r) => `- ${r.path} [${r.globs.join(", ")}]`),
+  ]
+
+  let sessionFiles = []
+  try {
+    sessionFiles = fs.readdirSync(stateDir).filter((f) => f.endsWith(".json"))
+  } catch {}
+
+  if (sessionFiles.length > 0) {
+    lines.push("", `### Active sessions (${sessionFiles.length})`)
+    for (const f of sessionFiles) {
+      try {
+        const s = JSON.parse(fs.readFileSync(path.join(stateDir, f), "utf8"))
+        lines.push(
+          `- ${f.replace(".json", "")}: ${s.contextPaths.length} paths, ${s.activeRulePaths.length} active rules`
+        )
+      } catch {}
+    }
+  } else {
+    lines.push("", "_No active sessions_")
+  }
+
+  process.stdout.write(lines.join("\n"))
+}
+
 if (require.main === module) {
   const cmd = process.argv[2]
   const opts = (() => {
@@ -321,6 +360,9 @@ if (require.main === module) {
         break
       case "pre-compact":
         cmdPreCompact(opts)
+        break
+      case "status":
+        cmdStatus(opts)
         break
       default:
         ok(null)
