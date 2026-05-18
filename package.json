@@ -41,6 +41,7 @@
     "!src/**/*.test.ts",
     "!src/**/*.spec.ts",
     ".claude-plugin/",
+    ".factory-plugin/",
     "hooks/",
     "hooks/!state/*.json",
     "commands/",
