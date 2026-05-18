@@ -7,5 +7,7 @@
     "email": "manuel@manuelvanrijn.nl"
   },
   "license": "MIT",
-  "repository": "https://github.com/manuelvanrijn/copilot-instructions-plugin"
+  "repository": "https://github.com/manuelvanrijn/copilot-instructions-plugin",
+  "hooks": "./hooks/hooks.json",
+  "commands": "./commands"
 }
